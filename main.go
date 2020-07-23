@@ -54,6 +54,15 @@ func emitMessages() {
 		"transactional.id": "testTransactionId",
 		"broker.address.family": "v4",
 	}
+	topic:= TopicName
+
+	err := createTopicIfNecessary(config, topic)
+	if err != nil {
+		panic(err)
+	}
+
+	ctx, cxl := context.WithTimeout(context.Background(), 3000)
+	defer cxl()
 
 	producer, err := kafka.NewProducer(config)
 	if err != nil {
@@ -61,21 +70,12 @@ func emitMessages() {
 	}
 	defer producer.Close()
 
-	topic:= TopicName
-
-	err = createTopicIfNecessary(config, topic)
-	if err != nil {
-		panic(err)
-	}
-
-	ctx, cxl := context.WithTimeout(context.Background(), 3000)
-	defer cxl()
 	err = producer.InitTransactions(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	go func() {
+	go func(){
 		for {
 			evt, ok := <-producer.Events()
 			if !ok{
@@ -103,7 +103,7 @@ func emitMessages() {
 		i++
 		buf := make([]byte, binary.MaxVarintLen64)
 		binary.PutVarint(buf, i)
-		msg := &kafka.Message{Value: buf, Key: buf, TopicPartition: kafka.TopicPartition{Partition: 0, Topic: &topic, Offset: kafka.OffsetBeginning}}
+		msg := &kafka.Message{Value: buf, Key: buf, TopicPartition: kafka.TopicPartition{Topic: &topic}}
 		err = producer.Produce(msg, nil)
 		if err != nil {
 			panic(err)
@@ -125,7 +125,6 @@ func createTopicIfNecessary(config *kafka.ConfigMap, topic string) error {
 	if err != nil {
 		return err
 	}
-
 	if _, ok := md.Topics[topic]; !ok {
 		topics, err := admin.CreateTopics(context.Background(), []kafka.TopicSpecification{
 			{
