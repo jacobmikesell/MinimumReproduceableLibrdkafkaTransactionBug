@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -11,6 +12,40 @@ import (
 const TopicName = "test"
 
 func main() {
+	if os.Args[1] == "-r" {
+		readMessage()
+	} else {
+		emitMessages()
+	}
+}
+
+func readMessage() {
+	config:= &kafka.ConfigMap{"bootstrap.servers": "localhost",
+		"isolation.level": "read_committed",
+		"enable.idempotence": true,
+		"enable.auto.commit": false,
+		"enable.auto.offset.store": false,
+		"group.id": "testTransactionalGroup",
+		"broker.address.family": "v4",
+	}
+
+	consumer, err := kafka.NewConsumer(config)
+	if err != nil {
+		panic(err)
+	}
+	topic := "test"
+	err = consumer.Assign([]kafka.TopicPartition{{Topic: &topic, Partition: 0, Offset: kafka.OffsetBeginning}})
+	if err != nil {
+		panic(err)
+	}
+	msg, err := consumer.ReadMessage(-1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(msg)
+}
+
+func emitMessages() {
 	config:= &kafka.ConfigMap{"bootstrap.servers": "localhost",
 		"isolation.level": "read_committed",
 		"enable.idempotence": true,
