@@ -12,7 +12,7 @@ import (
 const TopicName = "test"
 
 func main() {
-	if os.Args[1] == "-r" {
+	if len(os.Args) > 1 &&os.Args[1] == "-r" {
 		readMessage()
 	} else {
 		emitMessages()
